@@ -114,15 +114,18 @@ class _MapScreenState extends State<MapScreen> {
   Icon _getIcon(String kategori) {
     switch (kategori) {
       case "rumah":
-        return const Icon(Icons.home, color: Colors.blue);
+        return const Icon(Icons.home, color: Colors.blue, size: 40);
       case "toko":
-        return const Icon(Icons.store, color: Colors.green);
+        return const Icon(Icons.store, color: Colors.green, size: 40);
       case "kantor":
-        return const Icon(Icons.business, color: Colors.orange);
+        return const Icon(Icons.business, color: Colors.orange, size: 40);
       default:
-        return const Icon(Icons.location_on, color: Colors.red);
+        return const Icon(Icons.location_on, color: Colors.red, size: 40);
     }
   }
+
+
+  
 
   // ===================== UI =====================
   @override
