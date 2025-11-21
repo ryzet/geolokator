@@ -45,40 +45,7 @@ class _MapScreenState extends State<MapScreen> {
   final List<CatatanModel> _savedNotes = [];
   final MapController _mapController = MapController();
 
-  int? _selectedMarkerIndex;
-
-  // Dialog konfirmasi hapus marker
-  void _showDeleteDialog(int index) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Hapus Marker"),
-          content: const Text("Yakin ingin menghapus marker ini?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal"),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _savedNotes.removeAt(index);
-                });
-                Navigator.pop(context);
-              },
-              child: const Text(
-                "Hapus",
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-
+  // FIND CURRENT LOCATION 
   Future<void> _findMyLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
@@ -97,12 +64,14 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  //LONG PRESS HANDLER 
   void _handleLongPress(TapPosition tap, latlong.LatLng point) async {
     List<Placemark> placemarks =
         await placemarkFromCoordinates(point.latitude, point.longitude);
 
     String address = placemarks.first.street ?? "Alamat tidak dikenal";
 
+    // Pilih kategori
     String? kategori = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -141,7 +110,93 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  // Icon berdasarkan kategori
+  //TAMBAHAN NOMOR 2 — HAPUS MARKER 
+  void _showDeleteDialog(int index) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Hapus Marker?"),
+          content: const Text("Yakin ingin menghapus marker ini?"),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Batal")),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _savedNotes.removeAt(index);
+                });
+                Navigator.pop(context);
+              },
+              child: const Text("Hapus"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  //TAMBAHAN NOMOR 3 — EDIT MARKER 
+  void _editMarkerDialog(int index) {
+    CatatanModel data = _savedNotes[index];
+
+    TextEditingController noteController =
+        TextEditingController(text: data.note);
+
+    String selectedKategori = data.kategori;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Edit Marker"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(labelText: "Catatan"),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField(
+                value: selectedKategori,
+                items: const [
+                  DropdownMenuItem(value: "rumah", child: Text("Rumah")),
+                  DropdownMenuItem(value: "toko", child: Text("Toko")),
+                  DropdownMenuItem(value: "kantor", child: Text("Kantor")),
+                ],
+                onChanged: (value) {
+                  selectedKategori = value.toString();
+                },
+                decoration: const InputDecoration(labelText: "Kategori"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Batal")),
+            TextButton(
+                onPressed: () {
+                  setState(() {
+                    _savedNotes[index] = CatatanModel(
+                      position: data.position,
+                      note: noteController.text,
+                      address: data.address,
+                      kategori: selectedKategori,
+                    );
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text("Simpan")),
+          ],
+        );
+      },
+    );
+  }
+
+  //ICON MARKER 
   Icon _getIcon(String kategori) {
     switch (kategori) {
       case "rumah":
@@ -155,6 +210,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  //UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -170,26 +226,55 @@ class _MapScreenState extends State<MapScreen> {
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           ),
-          MarkerLayer(
-            markers: _savedNotes
-                .asMap()
-                .entries
-                .map(
-                  (entry) => Marker(
-                    point: entry.value.position,
 
-                    child: GestureDetector(
-                      onTap: () {
-                        _showDeleteDialog(entry.key);
-                      },
-                      child: _getIcon(entry.value.kategori),
-                    ),
+          //MARKERS
+          MarkerLayer(
+            markers: _savedNotes.asMap().entries.map(
+              (entry) {
+                final index = entry.key;
+                final n = entry.value;
+
+                return Marker(
+                  point: n.position,
+                  child: GestureDetector(
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.edit),
+                                title: const Text("Edit Marker"),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _editMarkerDialog(index);
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.delete,
+                                    color: Colors.red),
+                                title: const Text("Hapus Marker"),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showDeleteDialog(index);
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    child: _getIcon(n.kategori),
                   ),
-                )
-                .toList(),
+                );
+              },
+            ).toList(),
           ),
         ],
       ),
+
       floatingActionButton: FloatingActionButton(
         onPressed: _findMyLocation,
         child: const Icon(Icons.my_location),
