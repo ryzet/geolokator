@@ -45,7 +45,40 @@ class _MapScreenState extends State<MapScreen> {
   final List<CatatanModel> _savedNotes = [];
   final MapController _mapController = MapController();
 
-  // ===================== FIND CURRENT LOCATION =====================
+  int? _selectedMarkerIndex;
+
+  // Dialog konfirmasi hapus marker
+  void _showDeleteDialog(int index) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Hapus Marker"),
+          content: const Text("Yakin ingin menghapus marker ini?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Batal"),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _savedNotes.removeAt(index);
+                });
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "Hapus",
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   Future<void> _findMyLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
@@ -64,14 +97,12 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // ===================== LONG PRESS HANDLER =====================
   void _handleLongPress(TapPosition tap, latlong.LatLng point) async {
     List<Placemark> placemarks =
         await placemarkFromCoordinates(point.latitude, point.longitude);
 
     String address = placemarks.first.street ?? "Alamat tidak dikenal";
 
-    // Pilih kategori
     String? kategori = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -124,10 +155,6 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-
-  
-
-  // ===================== UI =====================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,10 +172,18 @@ class _MapScreenState extends State<MapScreen> {
           ),
           MarkerLayer(
             markers: _savedNotes
+                .asMap()
+                .entries
                 .map(
-                  (n) => Marker(
-                    point: n.position,
-                    child: _getIcon(n.kategori),
+                  (entry) => Marker(
+                    point: entry.value.position,
+
+                    child: GestureDetector(
+                      onTap: () {
+                        _showDeleteDialog(entry.key);
+                      },
+                      child: _getIcon(entry.value.kategori),
+                    ),
                   ),
                 )
                 .toList(),
